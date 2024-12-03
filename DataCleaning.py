@@ -15,6 +15,7 @@ if planetary_masses:
 df_m_dwarves = df_filtered[df_filtered['SPEC'].str.startswith('M')]
 df_no_m_dwarves = df_filtered[~df_filtered['SPEC'].str.startswith('M')]
 
+
 def ra_to_degrees(ra_str):
     # Split the RA string into hours, minutes, and seconds
     hours, minutes, seconds = map(float, ra_str.split())
@@ -38,7 +39,7 @@ def dec_to_degrees(dec_str):
     return sign * degrees_in_degrees
 
 
-df_m_dwarves['RA'] = df_m_dwarves['RA'].apply(ra_to_degrees)
-df_m_dwarves['DEC'] = df_m_dwarves['DEC'].apply(dec_to_degrees)
+df_no_m_dwarves['RA'] = df_no_m_dwarves['RA'].apply(ra_to_degrees)
+df_no_m_dwarves['DEC'] = df_no_m_dwarves['DEC'].apply(dec_to_degrees)
 
-df_m_dwarves.to_csv('MDwarfs.csv', index=False)
+df_no_m_dwarves.to_csv('NotMDwarfs.csv', index=False)
