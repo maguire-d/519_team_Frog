@@ -2,7 +2,7 @@ import csv
 from astropy.io import fits
 
 # Open the FITS file and extract data
-with fits.open("DESY_LT_crossmatch.fits") as hdul:
+with fits.open("raw_data/DESY3_LTcatalog.fits") as hdul:
     data = hdul[1].data
 
     # Replace 'RA' and 'DEC' with the actual column names in your data
