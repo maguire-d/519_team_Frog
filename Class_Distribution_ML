@@ -1,0 +1,106 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn import datasets
+from sklearn import svm
+
+import pandas as pd
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier  # Example model
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
+from sklearn.impute import SimpleImputer
+from imblearn.over_sampling import SMOTE
+
+# File paths for the datasets
+file_paths = {
+    "DESY_NotMDwarfs": "DESY_NotMDwarfs_Crossmatch.csv",
+    "JOHNSTON_NotMDwarfs": "JOHNSTON_NotMDwarfs_Crossmatch.csv",
+    "Million": "million_seed_3_arcsec_x_match.csv",
+    "DESY_MDwarfs": "DESY_MDwarfs_Crossmatch.csv",
+    "JOHNSTON_MDwarfs": "JOHNSTON_MDwarfs_Crossmatch.csv"
+}
+
+# Step 1: Load datasets into a dictionary with unique keys
+dataframes = {key: pd.read_csv(path) for key, path in file_paths.items()}
+
+# Debugging: Check class distribution in individual datasets
+for name, df in dataframes.items():
+    print(f"Class Distribution in {name}:")
+    if "SPEC" in df.columns:
+        print(df["SPEC"].value_counts())
+    else:
+        print("SPEC column not found")
+    print()
+
+# Step 2: Ensure all datasets have the SPEC column
+for name, df in dataframes.items():
+    if "Spectral Type" in df.columns:
+        df["SPEC"] = df["Spectral Type"]
+    elif "SPEC" not in df.columns:
+        df["SPEC"] = "ND"  # Default to ND if SPEC is missing
+
+# Step 3: Get all unique column names across datasets
+all_columns = set()
+for df in dataframes.values():
+    all_columns.update(df.columns)
+
+# Step 4: Align datasets to the same columns
+aligned_dataframes = []
+for name, df in dataframes.items():
+    df = df.reindex(columns=all_columns, fill_value=np.nan)
+    print(f"Aligned {name}:")
+    print(df["SPEC"].value_counts())
+    aligned_dataframes.append(df)
+
+# Step 5: Combine datasets
+combined_df = pd.concat(aligned_dataframes, ignore_index=True)
+print("\nClass Distribution After Combining Datasets:")
+print(combined_df["SPEC"].value_counts())
+
+# Step 6: Cleaning: Remove columns and rows with high missing values
+threshold = 0.5
+combined_df_cleaned_columns = combined_df.dropna(axis=1, thresh=int((1 - threshold) * len(combined_df)))
+combined_df_cleaned_rows = combined_df_cleaned_columns.dropna(axis=0, thresh=int((1 - threshold) * len(combined_df_cleaned_columns.columns)))
+
+print("\nClass Distribution After Cleaning:")
+print(combined_df_cleaned_rows["SPEC"].value_counts())
+
+# Step 7: Prepare features and target
+target_column = "SPEC"
+features = combined_df_cleaned_rows.drop(columns=[target_column])
+target = combined_df_cleaned_rows[target_column]
+
+# Step 8: Check for numeric and categorical features
+numeric_features = features.select_dtypes(include=["float64", "int64"]).columns
+categorical_features = features.select_dtypes(exclude=["float64", "int64"]).columns
+print("\nNumeric Features:", numeric_features.tolist())
+print("Categorical Features:", categorical_features.tolist())
+
+# Step 9: Impute numeric features
+imputer = SimpleImputer(strategy="mean")
+features[numeric_features] = imputer.fit_transform(features[numeric_features])
+
+# Drop or encode categorical features
+if not categorical_features.empty:
+    print("\nDropping non-numeric columns:", categorical_features.tolist())
+    features = features.drop(columns=categorical_features)
+
+# Step 10: Encode target variable
+label_encoder = LabelEncoder()
+target_encoded = label_encoder.fit_transform(target)
+
+print("\nClass Distribution Before SMOTE:")
+unique, counts = np.unique(target_encoded, return_counts=True)
+print(dict(zip(label_encoder.inverse_transform(unique), counts)))
+
+# Step 11: Apply SMOTE
+if len(np.unique(target_encoded)) > 1:
+    smote = SMOTE(sampling_strategy="all", random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(features, target_encoded)
+
+    print("\nClass Distribution After SMOTE:")
+    unique, counts = np.unique(y_resampled, return_counts=True)
+    print(dict(zip(label_encoder.inverse_transform(unique), counts)))
+else:
+    print("\nError: Only one class remains after preprocessing.")
